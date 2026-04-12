@@ -1,4 +1,4 @@
-   const endpoint = "https://script.google.com/macros/s/AKfycbydkFX9XZ4a7CPotkNzxBI3tPrlGoOK1lsLjoUBZoAleBLFproTWOCMbW7li6T13WB_AA/exec";
+   const endpoint = "https://script.google.com/macros/s/AKfycbxcmE1cStxREMyHqWPAHmsz_PE2gM0QpvwhZfOVCbvk/dev";
 
         const inputTelefono = document.getElementById("inputTelefono");
         const estado = document.getElementById("estado");
