@@ -1,12 +1,38 @@
-   const endpoint = "https://script.google.com/macros/s/AKfycbx1BpHHpi-9sJ46JowAP4FqxFJTu75zPVQRIxp83sh0fAULdTyS9Id7i311c7rI5DoZAQ/exec";
+   const endpoint = "https://script.google.com/macros/s/AKfycbxTSHkYVtA3ckQZRbb_tJppuMhTH_oyD1rieVHJY7YfP93RQ3u8u4Qc8bVvQcsCWaoLKQ/exec";
 
         const inputTelefono = document.getElementById("inputTelefono");
         const estado = document.getElementById("estado");
         const btn = document.getElementById("btnPrincipal");
         const actions = document.getElementById("accionesExistente");
 
+      async function postServer(payload) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify(payload),
+            mode: "cors",
+            cache: "no-store",
+            credentials: "omit"
+          });
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status}: ${text}`);
+          }
+
+          return await response.json();
+        } catch (error) {
+          console.error("Error conectando con el servidor de Sheets:", error);
+          throw error;
+        }
+      }
+
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('?sw')
+        navigator.serviceWorker.register('sw.js')
           .then(() => console.log("SW registrado"))
           .catch(err => console.error("Error SW:", err));
       }
@@ -93,11 +119,10 @@ function limpiarBotones() {
 
         // --- CONFIGURACIÓN DEL TIMEOUT ---
 
-        const consultResult = await new Promise((resolve)=>{
-          google.script.run.withSuccessHandler((res)=> { servidorRespondio = true; mostrarFeedback( res.status,"success"); clearTimeout(timerSeguridad);resolve(res)
-          }).withFailureHandler((err)=>{reject(err);})
-          .procesarAccionServidor({ telefono: tel, modo: "CONSULTAR" });
-        });
+        const consultResult = await postServer({ telefono: tel, modo: "CONSULTAR" });
+        servidorRespondio = true;
+        clearTimeout(timerSeguridad);
+        mostrarFeedback(consultResult.status || "Listo", "success");
 
         //console.log(consultResult);
         if(consultResult.success && consultResult.mode !== "NUEVO"){
@@ -147,22 +172,12 @@ function limpiarBotones() {
             }
           },3000);
 
-          const result = await new Promise((resolve)=>{
-            mostrarFeedback("Guardando en Nube", "loading"); // que significa resolve aca?
-            google.script.run.withSuccessHandler((response) =>{
-              saved = true;
-              clearTimeout(timer)
-              //console.log("Ejecutando guardado");
-              mostrarFeedback(response.status, "success");
-              if(modo === "NUEVO") document.getElementById("inputTelefono").value = "";
-              resolve(response);
-            }).withFailureHandler((err)=>{
-              console.log(err)
-              
-
-            }).procesarAccionServidor(locationPayload);
-            
-            });
+          mostrarFeedback("Guardando en Nube", "loading");
+          const result = await postServer(locationPayload);
+          saved = true;
+          clearTimeout(timer);
+          mostrarFeedback(result.status || "Guardado", "success");
+          if (modo === "NUEVO") document.getElementById("inputTelefono").value = "";
                     
       }catch(error){
         //FALLO guardando
@@ -350,15 +365,10 @@ function limpiarBotones() {
               //teléfono del objeto guardado en Local Storage, basandose en el formato "data" del metodo getGPS().
               const telefonoAValidar = data.telefono;
 
-              // Envolvemos METODO google.script.run en una promesa para hacerlo sicrono manejable.
-              const resultado = await new Promise((resolve, reject) => {
-                // Timeout de seguridad de 15 segundos
-                const t = setTimeout(() => reject("Timeout Google"), 15000);
-                google.script.run
-                  .withSuccessHandler(res => { clearTimeout(t); resolve(res); })
-                  .withFailureHandler(err => { clearTimeout(t); reject(err); })
-                  .procesarAccionServidor(data); 
-              });
+              const resultado = await Promise.race([
+                postServer(data),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout Google")), 15000))
+              ]);
               //Si ya existe se borra
               console.log(resultado);
               if (resultado.mode==="ACTUALIZAR" && !resultado.success) {
