@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
+  <title>Registrar Ubicación</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=location_searching" />
+  <?!= include('styles'); ?>
+</head>
+
+<body>
+  <div class="container">
+    <svg xmlns="http://www.w3.org/2000/svg" height="100px" viewBox="0 -960 960 960" width="100px" fill="#5985E1"><path d="M450-42v-75q-137-14-228-105T117-450H42v-60h75q14-137 105-228t228-105v-75h60v75q137 14 228 105t105 228h75v60h-75q-14 137-105 228T510-117v75h-60Zm244.5-223.5Q784-355 784-480t-89.5-214.5Q605-784 480-784t-214.5 89.5Q176-605 176-480t89.5 214.5Q355-176 480-176t214.5-89.5Zm-321-108Q330-417 330-480t43.5-106.5Q417-630 480-630t106.5 43.5Q630-543 630-480t-43.5 106.5Q543-330 480-330t-106.5-43.5ZM544-416q26-26 26-64t-26-64q-26-26-64-26t-64 26q-26 26-26 64t26 64q26 26 64 26t64-26Zm-64-64Z"/></svg>
+    <p id="estado"></p>
+
+    <div class="card">
+      <div class="search-box">
+        <input type="tel" id="inputTelefono" placeholder="telefono" maxlength="8" minlength="8" inputmode="numeric" pattern="\d{8}" title="Debe contener exactamente 8 números" required>
+        <button id="btnPrincipal" onclick="flujoConsultar()">Consultar</button>
+      </div>
+      <div id="accionesExistente" style="display: none;">
+        <button onclick="verEnMapa()" class="btn-map">📍Ver Mapa</button>
+        <button onclick="flujoActualizar()" class="btn-update" style="display: none;">🔄 Actualizar Ubicación</button>
+      </div>
+    </div>
+  </div>
+  <div id="miModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 id="modalTitulo">Confirmación</h3>
+      <p id="modalMensaje">¿Estás seguro de continuar?</p>
+      <div class="modal-buttons">
+        <button id="btnCancelar" class="btn-cancelar">Cancelar</button>
+        <button id="btnConfirmar" class="btn-aceptar">Aceptar</button>
+      </div>
+    </div>
+  </div>
+  <?!= include('js'); ?>
+</body>
+</html>
