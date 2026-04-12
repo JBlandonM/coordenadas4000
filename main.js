@@ -1,4 +1,4 @@
-   const endpoint = "https://script.google.com/macros/s/AKfycbxTSHkYVtA3ckQZRbb_tJppuMhTH_oyD1rieVHJY7YfP93RQ3u8u4Qc8bVvQcsCWaoLKQ/exec";
+   const endpoint = "https://script.google.com/macros/s/AKfycbydkFX9XZ4a7CPotkNzxBI3tPrlGoOK1lsLjoUBZoAleBLFproTWOCMbW7li6T13WB_AA/exec";
 
         const inputTelefono = document.getElementById("inputTelefono");
         const estado = document.getElementById("estado");
@@ -10,8 +10,7 @@
           const response = await fetch(endpoint, {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json"
+              "Content-Type": "text/plain",
             },
             body: JSON.stringify(payload),
             mode: "cors",
