@@ -172,12 +172,17 @@ async function flujoConsultar() {
     if (!fallbackActivado) {
       fallbackActivado = true;
       mostrarFeedback("Sin conexión. Iniciando guardado offline...", "error");
-      ejecutarGuardado(tel, "EXTERNAL_SAVE"); // Llama a getGPS y luego guarda localmente de forma correcta
+      // FIX #3: await para que finally no reactive el botón mientras getGPS aún está corriendo
+      await ejecutarGuardado(tel, "EXTERNAL_SAVE");
     }
     console.log(e);
   } finally {
     console.log("ejecutando finally");
-    btn.disabled = false;// <--- Se ejecuta SIEMPRE al terminar el bloque try o catch
+    // FIX #3: Si fallbackActivado=true, ejecutarGuardado aún puede estar corriendo.
+    // mostrarFeedback("success"/"error") dentro de ejecutarGuardado ya re-habilita el botón.
+    if (!fallbackActivado) {
+      btn.disabled = false;
+    }
   }
 }
 
@@ -210,11 +215,12 @@ async function ejecutarGuardado(tel, modo) {
     if (modo === "NUEVO") document.getElementById("inputTelefono").value = "";
 
   } catch (error) {
-    //FALLO guardando
     console.log("ERROR AL EJECUTAR GUARDAR");
-    mostrarFeedback(error, "error");
-    return
-    // falta agregar/modificar alerta o popup que se muestra al usuario
+    // FIX #1 & #5: Usar error.message en lugar del objeto Error crudo que mostraba "[object Error]"
+    // FIX #2: 8000ms para que el mensaje GPS (largo e instructivo) sea legible antes de desaparecer
+    mostrarFeedback(error.message || String(error), "error", 8000);
+    // FIX #11: Recuperar foco en el input tras error GPS para guiar al usuario
+    inputTelefono.focus();
   }
 }
 
@@ -228,22 +234,34 @@ function verEnMapa() {
 }
 
 const getGPS = (tel, modo) => {
-  mostrarFeedback("Obteniendo ubicación...", "loading");
+  mostrarFeedback("Obteniendo ubicación... 📍", "loading");
+
+  // FIX #7: Mensajes intermedios de progreso para que el usuario sepa que la app sigue viva
+  // durante los 10s de espera del GPS (sin estos, la UI parece congelada)
+  const timerProgreso1 = setTimeout(() => mostrarFeedback("Buscando señal GPS... 🛰️", "loading"), 4000);
+  const timerProgreso2 = setTimeout(() => mostrarFeedback("Señal débil, aguardando... ⏳", "loading"), 7500);
+
+  const limpiarTimersProgreso = () => {
+    clearTimeout(timerProgreso1);
+    clearTimeout(timerProgreso2);
+  };
+
   return new Promise((resolve, reject) => {
     // Verificamos si el navegador soporta Geolocalización
     if (!navigator.geolocation) {
+      limpiarTimersProgreso();
       return reject(new Error("Tu navegador no soporta GPS"));
     }
 
-
     const opciones = {
       enableHighAccuracy: true, // Máxima precisión (GPS vs Wi-Fi)
-      timeout: 10000,            // Esperar máximo 8 segundos
+      timeout: 10000,           // Esperar máximo 10 segundos
       maximumAge: 0             // No usar ubicaciones guardadas en caché
     };
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        limpiarTimersProgreso(); // FIX #7: Cancelar mensajes de progreso al obtener posición exitosa
         const payload = {
           telefono: tel,
           latitud: pos.coords.latitude,
@@ -254,15 +272,17 @@ const getGPS = (tel, modo) => {
         };
         resolve(payload);
       }, (err) => {
-        // Traducimos errores comunes para el usuario
-        let msg = "Error desconocido";
-        if (err.code === 1) msg = "No es posible localizarte. Por favor, activa el GPS y permite el acceso en tu navegador para continuar. 📍";
-        if (err.code === 2) msg = "La señal GPS es débil en este momento. Acercarte a una ventana o sal a un espacio abierto, he intenta de nuevo. 🛰️";
-        if (err.code === 3) msg = "Algo salió mal al intentar localizarte. Por favor,  presiona 'Guardar' nuevamente. 🔄";
+        limpiarTimersProgreso(); // FIX #7: Cancelar mensajes de progreso al fallar
+
+        // FIX #6: Mensajes diferenciados por tipo de error GPS con instrucciones específicas por caso
+        let msg = "Error desconocido al obtener ubicación.";
+        if (err.code === 1) msg = "No es posible localizarte. Activa el GPS y permite el acceso en tu navegador. 📍";
+        if (err.code === 2) msg = "La señal GPS es débil. Acércate a una ventana o sal a un espacio abierto e intenta de nuevo. 🛰️";
+        // FIX #8: El botón dice 'Consultar', no 'Guardar' — el texto anterior era incorrecto
+        if (err.code === 3) msg = "No se pudo obtener tu ubicación a tiempo. Presiona 'Consultar' nuevamente. 🔄";
         reject(new Error(msg));
       }, opciones);
   });
-
 };
 
 
@@ -296,7 +316,9 @@ function mostrarOpcionesExistente(display) {
   if (acciones) acciones.style.display = display;
 }
 
-function mostrarFeedback(mensaje, tipo = 'success') {
+// FIX #2: Parámetro opcional `duracion` para controlar cuánto persiste el mensaje
+// Los errores GPS necesitan más tiempo (~8s) que los mensajes genéricos (3s)
+function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
   const card = document.querySelector('.card');
   const estado = document.getElementById("estado"); // Aseguramos el ID correcto
 
@@ -320,7 +342,7 @@ function mostrarFeedback(mensaje, tipo = 'success') {
       if (navigator.vibrate) navigator.vibrate(100);
 
       // Solo el éxito y el error se borran solos
-      iniciarTemporizadorBorrado();
+      iniciarTemporizadorBorrado(duracion || 3000); // FIX #2: respetar duracion personalizada
       break;
 
     case 'error':
@@ -331,7 +353,7 @@ function mostrarFeedback(mensaje, tipo = 'success') {
       btnPrincipal.disabled = false;
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-      iniciarTemporizadorBorrado();
+      iniciarTemporizadorBorrado(duracion || 20000);
       break;
 
     case 'loading':
@@ -349,7 +371,7 @@ function mostrarFeedback(mensaje, tipo = 'success') {
       estado.classList.add("msg-offline");
       btnPrincipal.style.background = "var(--warning)";
       btnPrincipal.disabled = false;
-      iniciarTemporizadorBorrado(5000); // 5 segundos para que lea el aviso de respaldo
+      iniciarTemporizadorBorrado(duracion || 5000); // FIX #2: respetar duracion personalizada
       break;
   }
 }

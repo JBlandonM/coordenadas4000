@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordenadas4000 - Test Suite</title>
+    <style>
+        :root {
+            --primary: #5985E1;
+            --primary-dark: #3d60a8;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 350px;
+            background: var(--card-bg);
+            border-right: 1px solid #334155;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            background: #020617;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .test-group h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin: 0;
+            margin-top: 1rem;
+        }
+
+        .btn-test {
+            background: #334155;
+            border: none;
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-test:hover {
+            background: #475569;
+        }
+
+        .btn-test.active {
+            background: var(--primary);
+        }
+
+        .btn-test .status {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .app-container {
+            flex: 1;
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        iframe {
+            width: 200%;
+            height: 200%;
+            border: none;
+            transform: scale(0.5);
+            transform-origin: 0 0;
+        }
+
+        .log-panel {
+            height: 200px;
+            background: #000;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            overflow-y: auto;
+            color: #10b981;
+            border: 1px solid #334155;
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            border-left: 2px solid transparent;
+            padding-left: 0.5rem;
+        }
+
+        .log-info { border-color: var(--primary); }
+        .log-success { border-color: var(--success); color: var(--success); }
+        .log-error { border-color: var(--error); color: var(--error); }
+        .log-warn { border-color: var(--warning); color: var(--warning); }
+
+        .device-frame {
+            max-width: 400px;
+            margin: auto;
+            height: 100%;
+            border: 12px solid #1e293b;
+            border-radius: 2rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: #1e293b;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>🛠 Test Suite</h1>
+        <p style="font-size: 0.875rem; color: var(--text-muted);">Coordenadas4000 Quality Assurance</p>
+        
+        <div class="test-group">
+            <h2>GPS & Ubicación</h2>
+            <button class="btn-test" onclick="runTest('gps_disabled')">
+                <span>GPS Inhabilitado</span>
+                <span class="status">Error 1</span>
+            </button>
+            <button class="btn-test" onclick="runTest('gps_weak')">
+                <span>Señal Débil</span>
+                <span class="status">Error 2</span>
+            </button>
+            <button class="btn-test" onclick="runTest('gps_timeout')">
+                <span>Timeout GPS</span>
+                <span class="status">Error 3</span>
+            </button>
+        </div>
+
+        <div class="test-group">
+            <h2>Red & Conexión</h2>
+            <button class="btn-test" onclick="runTest('offline')">
+                <span>Sin Conexión</span>
+                <span class="status">Offline</span>
+            </button>
+            <button class="btn-test" onclick="runTest('slow_network')">
+                <span>Red Lenta</span>
+                <span class="status">Fallback</span>
+            </button>
+            <button class="btn-test" onclick="runTest('server_error')">
+                <span>Error Servidor</span>
+                <span class="status">HTTP 500</span>
+            </button>
+        </div>
+
+        <div class="test-group">
+            <h2>Robustez UI</h2>
+            <button class="btn-test" onclick="runTest('autoclicker')">
+                <span>Autoclicker</span>
+                <span class="status">Spam</span>
+            </button>
+            <button class="btn-test" onclick="runTest('ghost_input')">
+                <span>Input Fantasma</span>
+                <span class="status">Rápido</span>
+            </button>
+        </div>
+
+        <div class="test-group">
+            <h2>Sincronización</h2>
+            <button class="btn-test" onclick="runTest('offline_sync')">
+                <span>Sincronización</span>
+                <span class="status">Local -> Cloud</span>
+            </button>
+        </div>
+
+        <button class="btn-test" style="margin-top: auto; background: var(--error);" onclick="resetApp()">
+            <span>Resetear App</span>
+        </button>
+    </div>
+
+    <div class="main-content">
+        <div class="device-frame">
+            <div class="app-container">
+                <iframe id="appFrame" src="../index.html"></iframe>
+            </div>
+        </div>
+        
+        <div id="logPanel" class="log-panel">
+            <div class="log-entry log-info">Esperando ejecución de pruebas...</div>
+        </div>
+    </div>
+
+    <script src="test-logic.js"></script>
+</body>
+</html>
