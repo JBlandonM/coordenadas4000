@@ -40,7 +40,6 @@ body {
   padding: 6px;
   border-radius: var(--radius);
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
-  margin-top: 100px;
   /* --- Ajustes solicitados --- */
   width: 100%;
   /* Cubre el 90% en móviles */
