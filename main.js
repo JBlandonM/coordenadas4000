@@ -105,6 +105,7 @@ async function flujoConsultar() {
     const patron = /^\d{8}$/;
     if (!patron.test(tel)) {
       alert("Deben ser exactamente 8 dígitos numéricos");
+      input.focus();
       return;
     }
     btn.disabled = true; // Prevenir múltiples clicks
@@ -144,8 +145,10 @@ async function flujoConsultar() {
         if (mostrar) {
           verEnMapa();
           console.log("Presionaste Ver en Mapa");
+          input.focus();
         } else {
           console.log("Presionaste Cancelar");
+          input.focus();
         }
       }
 
@@ -153,8 +156,10 @@ async function flujoConsultar() {
         const mostrar = await mostrarModal("Número No Registrado", "¿Desea registrarlo con la coordenada actual?");
         if (mostrar) {
           ejecutarGuardado(tel, "NUEVO");
+          input.focus();
         } else {
           console.log("Presionaste Cancelar");
+          input.focus();
         }
       }
     } else {
