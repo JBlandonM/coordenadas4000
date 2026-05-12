@@ -46,9 +46,6 @@ body {
   /* Cubre el 90% en móviles */
   max-width: 800px;
   /* Evita que en PC se estire demasiado (puedes ajustarlo) */
-  height: 600px;
-  /* Altura fija de 600px */
-
   display: flex;
   flex-direction: column;
   justify-content: center;
