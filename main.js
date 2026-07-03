@@ -94,13 +94,14 @@ function limpiarBotones() {
 
 async function flujoConsultar() {
   let tel = '';
+  let servidorRespondio = false;
+  let fallbackActivado = false; // Flag para saber si el timer ya actuó
+
   try {
     mostrarOpcionesExistente("none"); //++++++++++++++++++++++++++++++
     const input = document.getElementById("inputTelefono");
     // Extraemos solo los números, ignorando espacios o guiones que el teclado móvil pueda insertar
     tel = input.value.replace(/\D/g, '');
-    let servidorRespondio = false;
-    let fallbackActivado = false; // Flag para saber si el timer ya actuó
 
     const patron = /^\d{8}$/;
     if (!patron.test(tel)) {
