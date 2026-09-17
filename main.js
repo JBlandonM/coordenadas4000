@@ -4,6 +4,16 @@ const inputTelefono = document.getElementById("inputTelefono");
 const estado = document.getElementById("estado");
 const btn = document.getElementById("btnPrincipal");
 const actions = document.getElementById("accionesExistente");
+const card = document.querySelector(".card");
+const modal = document.getElementById("miModal");
+const btnConfirmar = document.getElementById("btnConfirmar");
+const btnCancelar = document.getElementById("btnCancelar");
+const modalTitulo = document.getElementById("modalTitulo");
+const modalMensaje = document.getElementById("modalMensaje");
+
+function obtenerTelefonoLimpio() {
+  return inputTelefono.value.replace(/\D/g, '');
+}
 
 async function postServer(payload) {
   try {
@@ -27,6 +37,23 @@ async function postServer(payload) {
   } catch (error) {
     console.error("Error conectando con el servidor de Sheets:", error);
     throw error;
+  }
+}
+
+async function consultarConLimite(payload, tiempoLimiteMs) {
+  const promesaTimeout = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("TIMEOUT")), tiempoLimiteMs);
+  });
+  return await Promise.race([postServer(payload), promesaTimeout]);
+}
+
+async function guardarOffline(tel) {
+  try {
+    const locationPayload = await getGPS(tel, "EXTERNAL_SAVE");
+    saveLocal(locationPayload);
+  } catch (error) {
+    mostrarFeedback(error.message, "error", 8000);
+    inputTelefono.focus();
   }
 }
 
@@ -60,26 +87,21 @@ let datosRecuperados = null;
 */
 function mostrarModal(titulo, mensaje) {
   return new Promise((resolve) => {
-
-    const modal = document.getElementById("miModal");
-    const btnTrue = document.getElementById("btnConfirmar");
-    const btnFalse = document.getElementById("btnCancelar");
     btn.disabled = true;
 
-
-    document.getElementById("modalTitulo").innerText = titulo;
-    document.getElementById("modalMensaje").innerText = mensaje;
+    modalTitulo.innerText = titulo;
+    modalMensaje.innerText = mensaje;
 
     modal.style.display = "flex";
 
     // Al aceptar
-    btnTrue.onclick = () => {
+    btnConfirmar.onclick = () => {
       limpiarBotones();
       modal.style.display = "none";
       resolve(true);
     };
     // Al Cancelar
-    btnFalse.onclick = () => {
+    btnCancelar.onclick = () => {
       limpiarBotones();
       modal.style.display = "none";
       resolve(false);
@@ -87,52 +109,30 @@ function mostrarModal(titulo, mensaje) {
 
   });
 }
+
 function limpiarBotones() {
-  document.getElementById("btnConfirmar").onclick = null;
-  document.getElementById("btnCancelar").onclick = null;
+  btnConfirmar.onclick = null;
+  btnCancelar.onclick = null;
 }
 
 async function flujoConsultar() {
   let tel = '';
-  let servidorRespondio = false;
-  let fallbackActivado = false; // Flag para saber si el timer ya actuó
 
   try {
     mostrarOpcionesExistente("none"); //++++++++++++++++++++++++++++++
-    const input = document.getElementById("inputTelefono");
     // Extraemos solo los números, ignorando espacios o guiones que el teclado móvil pueda insertar
-    tel = input.value.replace(/\D/g, '');
+    tel = obtenerTelefonoLimpio();
 
     const patron = /^\d{8}$/;
     if (!patron.test(tel)) {
       alert("Deben ser exactamente 8 dígitos numéricos");
-      input.focus();
+      inputTelefono.focus();
       return;
     }
     btn.disabled = true; // Prevenir múltiples clicks
     mostrarFeedback("Consultando", "loading");
 
-    const timerSeguridad = setTimeout(() => {
-      if (!servidorRespondio) {
-        fallbackActivado = true;
-        console.warn("⚠️ Tiempo de espera agotado. Cambiando a modo offline.");
-        mostrarFeedback("Red lenta. Guardando localmente...", "loading");
-        ejecutarGuardado(tel, "EXTERNAL_SAVE"); // Forzamos guardado local
-      }
-    }, 4000); // 4000ms = 4 segundos de tolerancia
-
-    // --- CONFIGURACIÓN DEL TIMEOUT ---
-
-    const consultResult = await postServer({ telefono: tel, modo: "CONSULTAR" });
-    servidorRespondio = true;
-    clearTimeout(timerSeguridad);
-
-    // Si la red fue lenta y el timer de seguridad ya inició el guardado de emergencia,
-    // abortamos silenciosamente este flujo para no mostrar modales confusos.
-    if (fallbackActivado) {
-      console.log("Consulta finalizada tarde. El modo offline ya se había activado.");
-      return;
-    }
+    const consultResult = await consultarConLimite({ telefono: tel, modo: "CONSULTAR" }, 4000);
 
     mostrarFeedback(consultResult.status || "Listo", "success");
 
@@ -146,10 +146,10 @@ async function flujoConsultar() {
         if (mostrar) {
           verEnMapa();
           console.log("Presionaste Ver en Mapa");
-          input.focus();
+          inputTelefono.focus();
         } else {
           console.log("Presionaste Cancelar");
-          input.focus();
+          inputTelefono.focus();
         }
       }
 
@@ -157,10 +157,10 @@ async function flujoConsultar() {
         const mostrar = await mostrarModal("Número No Registrado", "¿Desea registrarlo con la coordenada actual?");
         if (mostrar) {
           ejecutarGuardado(tel, "NUEVO");
-          input.focus();
+          inputTelefono.focus();
         } else {
           console.log("Presionaste Cancelar");
-          input.focus();
+          inputTelefono.focus();
         }
       }
     } else {
@@ -168,59 +168,54 @@ async function flujoConsultar() {
     }
 
   } catch (e) {
-    console.log("Error en el servidor: " + e);
-    // Si falla inmediatamente (ej. sin internet), evitamos doble ejecución si el timer ya actuó
-    if (!fallbackActivado) {
-      fallbackActivado = true;
-      mostrarFeedback("Sin conexión. Iniciando guardado offline...", "error");
-      // FIX #3: await para que finally no reactive el botón mientras getGPS aún está corriendo
-      await ejecutarGuardado(tel, "EXTERNAL_SAVE");
+    console.log("Error en el servidor o Timeout: " + e);
+    const forzar = await mostrarModal(
+      "Red Inestable",
+      "La consulta falló. ¿Deseas forzar el registro guardándolo solo en tu teléfono?"
+    );
+
+    if (forzar) {
+      await guardarOffline(tel);
+    } else {
+      mostrarFeedback("Cancelado", "success");
+      inputTelefono.focus();
     }
-    console.log(e);
   } finally {
     console.log("ejecutando finally");
-    // FIX #3: Si fallbackActivado=true, ejecutarGuardado aún puede estar corriendo.
-    // mostrarFeedback("success"/"error") dentro de ejecutarGuardado ya re-habilita el botón.
-    if (!fallbackActivado) {
-      btn.disabled = false;
-    }
+    btn.disabled = false;
   }
 }
 
 async function ejecutarGuardado(tel, modo) {
+  let locationPayload;
   try {
     //gestionarUI("loading", modo === "NUEVO" ? "Registrando..." : "Actualizando...");
-    const offlineSave = false;
-    let saved = false;
-    const locationPayload = await getGPS(tel, modo);
-
-    const timer = setTimeout(() => { // timer por si hay mal internet o no hay del todo.
-      if (!saved) {
-        saveLocal(locationPayload);
-        saved = true;
-      }
-    }, 3000);
+    locationPayload = await getGPS(tel, modo);
 
     mostrarFeedback("Guardando en Nube", "loading");
-    const result = await postServer(locationPayload);
-    saved = true;
-    clearTimeout(timer);
+    const result = await consultarConLimite(locationPayload, 10000);
 
     // Si se guardó exitosamente en la nube, nos aseguramos de borrarlo localmente 
-    // en caso de que el timer de 3 segundos haya saltado antes de que esto terminara.
+    // en caso de que un guardado previo haya dejado basura local.
     if (result && result.success) {
       localStorage.removeItem("reg_" + (locationPayload.telefono || Date.now()));
     }
 
     mostrarFeedback(result.status || "Guardado", "success");
-    if (modo === "NUEVO") document.getElementById("inputTelefono").value = "";
+    if (modo === "NUEVO") inputTelefono.value = "";
 
   } catch (error) {
     console.log("ERROR AL EJECUTAR GUARDAR");
-    // FIX #1 & #5: Usar error.message en lugar del objeto Error crudo que mostraba "[object Error]"
-    // FIX #2: 8000ms para que el mensaje GPS (largo e instructivo) sea legible antes de desaparecer
-    mostrarFeedback(error.message || String(error), "error", 8000);
-    // FIX #11: Recuperar foco en el input tras error GPS para guiar al usuario
+
+    if (error.message === "TIMEOUT" || String(error).includes("Failed to fetch")) {
+      if (locationPayload) {
+        saveLocal(locationPayload);
+      } else {
+        mostrarFeedback(error.message || "Fallo de red", "error", 8000);
+      }
+    } else {
+      mostrarFeedback(error.message || String(error), "error", 8000);
+    }
     inputTelefono.focus();
   }
 }
@@ -305,7 +300,7 @@ function saveLocal(payload) { // hay que agregar los datos GPS
 
 
 function flujoActualizar() {
-  const tel = document.getElementById("inputTelefono").value;
+  const tel = obtenerTelefonoLimpio();
   ejecutarGuardado(tel, "ACTUALIZAR");
 }
 
@@ -313,16 +308,12 @@ function flujoActualizar() {
 
 function mostrarOpcionesExistente(display) {
   //mostrarFeedback("✅ El número ya existe","success");//+++++++++++++++++++++++++
-  const acciones = document.getElementById("accionesExistente");
-  if (acciones) acciones.style.display = display;
+  if (actions) actions.style.display = display;
 }
 
 // FIX #2: Parámetro opcional `duracion` para controlar cuánto persiste el mensaje
 // Los errores GPS necesitan más tiempo (~8s) que los mensajes genéricos (3s)
 function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
-  const card = document.querySelector('.card');
-  const estado = document.getElementById("estado"); // Aseguramos el ID correcto
-
   // 1. Limpieza inicial
   estado.innerText = mensaje;
   estado.className = "msg-base"; // Una clase base para estilo común
@@ -335,9 +326,9 @@ function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
   switch (tipo) {
     case 'success':
       estado.classList.add("msg-success");
-      btnPrincipal.style.background = "var(--success)";
-      btnPrincipal.classList.remove("loading");
-      btnPrincipal.disabled = false;//+++++++++
+      btn.style.background = "var(--success)";
+      btn.classList.remove("loading");
+      btn.disabled = false;//+++++++++
 
 
       if (navigator.vibrate) navigator.vibrate(100);
@@ -347,11 +338,11 @@ function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
       break;
 
     case 'error':
-      btnPrincipal.classList.remove("loading");
+      btn.classList.remove("loading");
       estado.classList.add("msg-error");
       card.classList.add("error-state");
-      btnPrincipal.style.background = "var(--error)";
-      btnPrincipal.disabled = false;
+      btn.style.background = "var(--error)";
+      btn.disabled = false;
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
       iniciarTemporizadorBorrado(duracion || 20000);
@@ -360,9 +351,9 @@ function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
     case 'loading':
       estado.classList.add("msg-loading");
       card.classList.add("loading-state");
-      btnPrincipal.style.background = "var(--primary-dark)"
-      btnPrincipal.classList.add("loading");
-      btnPrincipal.disabled = true;
+      btn.style.background = "var(--primary-dark)"
+      btn.classList.add("loading");
+      btn.disabled = true;
       ;
       // NOTA: No llamamos al temporizador aquí. El 'loading' se quita 
       // manualmente cuando llega la respuesta del servidor.
@@ -370,8 +361,8 @@ function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
 
     case 'offline':
       estado.classList.add("msg-offline");
-      btnPrincipal.style.background = "var(--warning)";
-      btnPrincipal.disabled = false;
+      btn.style.background = "var(--warning)";
+      btn.disabled = false;
       iniciarTemporizadorBorrado(duracion || 5000); // FIX #2: respetar duracion personalizada
       break;
   }
@@ -380,13 +371,10 @@ function mostrarFeedback(mensaje, tipo = 'success', duracion = null) {
 // Función auxiliar para resetear la UI
 function iniciarTemporizadorBorrado(ms = 3000) {
   window.feedbackTimer = setTimeout(() => {
-    const estado = document.getElementById("estado");
-    const card = document.querySelector('.card');
-
     estado.innerText = "";
     estado.className = "";
     card.classList.remove("error-state", "loading-state");
-    btnPrincipal.style.background = "var(--primary)";
+    btn.style.background = "var(--primary)";
   }, ms);
 }
 // 1. LA FUNCIÓN MAESTRA (Sincronización segura)
@@ -420,10 +408,8 @@ async function sincronizarPendientes() {
       //teléfono del objeto guardado en Local Storage, basandose en el formato "data" del metodo getGPS().
       const telefonoAValidar = data.telefono;
 
-      const resultado = await Promise.race([
-        postServer(data),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout Google")), 15000))
-      ]);
+      const resultado = await consultarConLimite(data, 15000);
+
       // Si llegamos aquí, el servidor respondió (con éxito o con un error lógico como "NUMERO INVALIDO")
       console.log(resultado);
       if (resultado && (resultado.success === true || resultado.success === "true")) {
