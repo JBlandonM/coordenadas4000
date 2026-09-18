@@ -133,14 +133,13 @@ async function flujoConsultar() {
     mostrarFeedback("Consultando", "loading");
 
     const consultResult = await consultarConLimite({ telefono: tel, modo: "CONSULTAR" }, 4000);
+    console.log("Respuesta servidor:", consultResult);
 
-    mostrarFeedback(consultResult.status || "Listo", "success");
+    if (consultResult && consultResult.success) {
+      mostrarFeedback(consultResult.message || "Listo", "success");
 
-    //console.log(consultResult);
-    if (consultResult.success) {
-
-      if (consultResult.mode !== "NUEVO") {
-        datosRecuperados = consultResult
+      if (consultResult.isRegistered) {
+        datosRecuperados = consultResult;
         //mostrarOpcionesExistente("flex");
         const mostrar = await mostrarModal("Número Registrado", "¿Ver Coordenadas 📍🌍?");
         if (mostrar) {
@@ -151,9 +150,7 @@ async function flujoConsultar() {
           console.log("Presionaste Cancelar");
           inputTelefono.focus();
         }
-      }
-
-      if (consultResult.mode == "NUEVO") {
+      } else {
         const mostrar = await mostrarModal("Número No Registrado", "¿Desea registrarlo con la coordenada actual?");
         if (mostrar) {
           ejecutarGuardado(tel, "NUEVO");
@@ -164,7 +161,8 @@ async function flujoConsultar() {
         }
       }
     } else {
-      console.log("Respuesta del servidor sin exito");
+      mostrarFeedback(consultResult?.message || "Error al consultar", "error");
+      console.log("Respuesta del servidor sin exito:", consultResult);
     }
 
   } catch (e) {
@@ -194,15 +192,17 @@ async function ejecutarGuardado(tel, modo) {
 
     mostrarFeedback("Guardando en Nube", "loading");
     const result = await consultarConLimite(locationPayload, 10000);
+    console.log("Respuesta de Guardado:", result);
 
     // Si se guardó exitosamente en la nube, nos aseguramos de borrarlo localmente 
     // en caso de que un guardado previo haya dejado basura local.
     if (result && result.success) {
       localStorage.removeItem("reg_" + (locationPayload.telefono || Date.now()));
+      mostrarFeedback(result.message || "Guardado", "success");
+      if (modo === "NUEVO") inputTelefono.value = "";
+    } else {
+      mostrarFeedback(result?.message || "Error al guardar", "error");
     }
-
-    mostrarFeedback(result.status || "Guardado", "success");
-    if (modo === "NUEVO") inputTelefono.value = "";
 
   } catch (error) {
     console.log("ERROR AL EJECUTAR GUARDAR");
@@ -221,8 +221,8 @@ async function ejecutarGuardado(tel, modo) {
 }
 
 function verEnMapa() {
-  if (datosRecuperados && datosRecuperados.lat) {
-    const url = "https://www.google.com/maps/search/?api=1&query=" + datosRecuperados.lat + "," + datosRecuperados.lng;
+  if (datosRecuperados && datosRecuperados.data && datosRecuperados.data.lat) {
+    const url = "https://www.google.com/maps/search/?api=1&query=" + datosRecuperados.data.lat + "," + datosRecuperados.data.lng;
     window.open(url, "_blank");
     mostrarOpcionesExistente("none");
     inputTelefono.value = "";
@@ -412,14 +412,14 @@ async function sincronizarPendientes() {
 
       // Si llegamos aquí, el servidor respondió (con éxito o con un error lógico como "NUMERO INVALIDO")
       console.log(resultado);
-      if (resultado && (resultado.success === true || resultado.success === "true")) {
+      if (resultado && resultado.success) {
         localStorage.removeItem(key);
-        console.log(`✅ Registro ${key} sincronizado exitosamente, Eliminando localmente.`);
-      } else if (resultado && resultado.error) {
+        console.log(`✅ Registro ${key} sincronizado exitosamente. Eliminando localmente.`);
+      } else if (resultado && !resultado.success) {
         // El servidor rechazó los datos permanentemente (ej. número inválido). 
         // Lo borramos para que no se quede atascado en un bucle infinito.
         localStorage.removeItem(key);
-        console.warn(`⚠️ Registro ${key} rechazado por el servidor (${resultado.error}). Eliminando localmente para evitar bucle.`);
+        console.warn(`⚠️ Registro ${key} rechazado por el servidor (${resultado.message}). Eliminando localmente para evitar bucle.`);
       } else {
         console.log(`⚠️ Registro ${key} respuesta inesperada, se conservará para revisión.`);
       }
