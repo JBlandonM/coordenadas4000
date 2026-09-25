@@ -24,11 +24,11 @@
       <div class="search-box">
         <input type="tel" id="inputTelefono" placeholder="telefono" maxlength="8" minlength="8" inputmode="numeric"
           pattern="\d{8}" title="Debe contener exactamente 8 números" required>
-        <button id="btnPrincipal" onclick="flujoConsultar()">Consultar</button>
+        <button id="btnPrincipal" onclick="flujoConsultar()">🔍 Consultar</button>
       </div>
       <div id="accionesExistente" style="display: none;">
         <button onclick="verEnMapa()" class="btn-map">📍Ver Mapa</button>
-        <button onclick="flujoActualizar()" class="btn-update">🔄 Actualizar Ubicación</button>
+        <button onclick="flujoActualizar()" class="btn-update">🔄 Actualizar</button>
       </div>
     </div>
   </div>
@@ -37,8 +37,8 @@
       <h3 id="modalTitulo">Confirmación</h3>
       <p id="modalMensaje">¿Estás seguro de continuar?</p>
       <div class="modal-buttons">
-        <button id="btnCancelar" class="btn-cancelar">Cancelar</button>
-        <button id="btnConfirmar" class="btn-aceptar">Aceptar</button>
+        <button id="btnCancelar" class="btn-cancelar">✖️ Cancelar</button>
+        <button id="btnConfirmar" class="btn-aceptar">✔️ Aceptar</button>
       </div>
     </div>
   </div>
