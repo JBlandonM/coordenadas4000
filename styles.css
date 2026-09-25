@@ -61,9 +61,9 @@ body {
 }
 
 h2 {
-  margin: 20px 0 28px 0;
+  margin: 10px 0 15px 0;
   font-weight: 700;
-  font-size: 60px;
+  font-size: 30px;
   text-align: center;
 }
 
@@ -72,12 +72,12 @@ input {
   /* Asegura que se comporte como bloque */
   width: 100%;
   /* Al igual que tus botones para mantener simetría */
-  height: 130px;
-  /* Altura solicitada */
-  margin: 0 auto 20px;
+  height: 70px;
+  /* Altura reducida */
+  margin: 0 auto 15px;
   /* Centrado horizontal y margen inferior */
-  font-size: 60px;
-  /* Un tamaño grande para que sea el protagonista */
+  font-size: 35px;
+  /* Un tamaño más ajustado */
   font-weight: bold;
   text-align: center;
   background: #f5f5f5;
@@ -92,6 +92,9 @@ input {
 
 #accionesExistente {
   width: 100%;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 button,
@@ -102,14 +105,14 @@ a {
   align-items: center;
   width: 100%;
   /* Ajustado al 90% para que respire en la card */
-  margin: 10px auto;
+  margin: 5px auto;
   /* Centra el elemento horizontalmente */
-  height: 130px;
+  height: 65px;
   /* Altura fija para que sean consistentes */
 
   /* Tipografía */
-  font-size: 40px;
-  /* 45px puede ser muy grande para algunos móviles, 32-36px es ideal */
+  font-size: 24px;
+  /* Tamaño ajustado para evitar scroll */
   font-weight: bold;
   text-decoration: none;
   /* Quita el subrayado del enlace */
@@ -128,7 +131,7 @@ a {
 }
 
 .btn-map {
-  font-size: 40px;
+  font-size: 24px;
 }
 
 button:active,
@@ -201,11 +204,11 @@ button.loading::after {
 /* El área de estado ahora es una "Badge" flotante o destacada */
 #estado {
   display: flex;
-  margin-top: 10px;
-  font-size: 35px;
+  margin-top: 5px;
+  font-size: 20px;
   font-weight: 600;
-  min-height: 40px;
-  padding: 10px;
+  min-height: 30px;
+  padding: 8px;
   border-radius: 12px;
   transition: all 0.3s ease;
 }
@@ -242,8 +245,8 @@ button.loading::after {
 
 .btn-cancelar,
 .btn-aceptar {
-  font-size: 20px;
-  height: 90px;
+  font-size: 16px;
+  height: 50px;
 }
 
 @keyframes aparecer {

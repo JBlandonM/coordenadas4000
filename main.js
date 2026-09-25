@@ -140,16 +140,8 @@ async function flujoConsultar() {
 
       if (consultResult.isRegistered) {
         datosRecuperados = consultResult;
-        //mostrarOpcionesExistente("flex");
-        const mostrar = await mostrarModal("Número Registrado", "¿Ver Coordenadas 📍🌍?");
-        if (mostrar) {
-          verEnMapa();
-          console.log("Presionaste Ver en Mapa");
-          inputTelefono.focus();
-        } else {
-          console.log("Presionaste Cancelar");
-          inputTelefono.focus();
-        }
+        mostrarOpcionesExistente("flex");
+        inputTelefono.focus();
       } else {
         const mostrar = await mostrarModal("Número No Registrado", "¿Desea registrarlo con la coordenada actual?");
         if (mostrar) {
@@ -299,9 +291,19 @@ function saveLocal(payload) { // hay que agregar los datos GPS
 }
 
 
-function flujoActualizar() {
-  const tel = obtenerTelefonoLimpio();
-  ejecutarGuardado(tel, "ACTUALIZAR");
+async function flujoActualizar() {
+  const confirmar = await mostrarModal(
+    "Actualizar Ubicación",
+    "¿Estás seguro de que deseas sobrescribir la ubicación anterior con tu coordenada actual?"
+  );
+
+  if (confirmar) {
+    mostrarOpcionesExistente("none"); // Ocultamos los botones para evitar doble clic
+    const tel = obtenerTelefonoLimpio();
+    ejecutarGuardado(tel, "ACTUALIZAR");
+  } else {
+    inputTelefono.focus();
+  }
 }
 
 
