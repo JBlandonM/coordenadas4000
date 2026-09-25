@@ -80,6 +80,11 @@ inputTelefono.addEventListener("keypress", function (e) {
   }
 });
 
+// Ocultar opciones si el usuario empieza a modificar el número
+inputTelefono.addEventListener("input", function () {
+  mostrarOpcionesExistente("none");
+});
+
 let datosRecuperados = null;
 
 /**
